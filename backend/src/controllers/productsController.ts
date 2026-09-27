@@ -5,7 +5,6 @@ import Products from "../models/productModel";
 export const getProducts = async (req: Request, res: Response): Promise<void> => {
     try {
         const products = await Products.find().sort({ createdAt: -1 });
-        // logic here...
         res.status(200).json(products);
     } catch (error) {
         res.status(500).json(error);
@@ -42,7 +41,6 @@ export const createProduct = async (req: Request, res: Response): Promise<Respon
         quantity,
     } = req.body;
     try {
-        // check if required fields is here
         if (!name || !description || !images || !prices || !brand) {
             return res.status(400).json({ error: "Missing Required Fields" });
         }
@@ -72,7 +70,6 @@ export const deleteProductByID = async (req: Request, res: Response): Promise<Re
             return res.status(400).json({ error: "Not a valid ID" });
         }
         const product = await Products.findByIdAndDelete(id);
-        // check if not found
         if (!product) {
             return res.status(404).json({ error: "No such product" });
         }
@@ -92,7 +89,6 @@ export const updateProductByID = async (req: Request, res: Response): Promise<Re
         const product = await Products.findByIdAndUpdate(id, { ...req.body }, { new: true });
         console.log("id: ", id, product, { ...req.body });
 
-        // check if not found
         if (!product) {
             return res.status(404).json({ error: "No such product" });
         }

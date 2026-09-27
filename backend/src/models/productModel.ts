@@ -44,7 +44,6 @@ const ItemPriceSchema = new Schema<IItemPrice>({
     },
 });
 
-// types of product...
 const ProductSchema = new Schema<IProduct>(
     {
         name: {
@@ -96,7 +95,6 @@ const ProductSchema = new Schema<IProduct>(
     { timestamps: true }
 );
 
-// export the schema
 const Products: Model<IProduct> = mongoose.model<IProduct>("Products", ProductSchema);
 
 export default Products;

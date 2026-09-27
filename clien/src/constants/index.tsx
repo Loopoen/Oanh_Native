@@ -1,6 +1,6 @@
 
 export const COLORS = {
-  primaryRed: '#DC3535', // primaryRed:String
+  primaryRed: '#DC3535',
   primaryOrange: '#D17842',
   primaryBlack: '#0C0F14',
   primaryDarkGrey: '#141921',
