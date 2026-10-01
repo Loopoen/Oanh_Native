@@ -6,16 +6,17 @@ import {
     deleteProductByID,
     updateProductByID,
 } from "../controllers/productsController";
+import { authenticateToken } from "../middlewares/authMiddleware";
 
 const router = express.Router();
  
 router.get("/", getProducts);
 router.get("/:id", getProductByID);
  
-router.post("/", createProduct);
+router.post("/", authenticateToken, createProduct);
  
-router.delete("/:id", deleteProductByID);
+router.delete("/:id", authenticateToken, deleteProductByID);
  
-router.put("/:id", updateProductByID);
+router.put("/:id", authenticateToken, updateProductByID);
  
 export default router;

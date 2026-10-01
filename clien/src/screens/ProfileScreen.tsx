@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import {
   Image,
   ScrollView,
@@ -7,42 +7,26 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LogIn, LogOut, ShieldCheck, User as UserIcon } from 'lucide-react-native';
 import { cssInterop } from 'nativewind';
 
 import { COLORS } from '../constants';
-import { RootStackParamList } from '../types';
-import { authService, User } from '../services/authService';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { logout, exitGuest } from '../store/authSlice';
 
 cssInterop(SafeAreaView, { className: 'style' });
 
-type ProfileNavigationProp = NativeStackNavigationProp<RootStackParamList>;
-
 const ProfileScreen = () => {
-  const navigation = useNavigation<ProfileNavigationProp>();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const dispatch = useAppDispatch();
+  const currentUser = useAppSelector((state) => state.auth.user);
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      const user = await authService.getCurrentUser();
-      setCurrentUser(user);
-    };
-
-    fetchUser();
-    const unsubscribe = navigation.addListener('focus', fetchUser);
-    return unsubscribe;
-  }, [navigation]);
-
-  const handleLogout = async () => {
-    await authService.logout();
-    setCurrentUser(null);
-    navigation.replace('Login');
+  // Đăng xuất / thoát chế độ khách -> RootNavigator tự đưa về màn Login
+  const handleLogout = () => {
+    dispatch(logout());
   };
 
   const handleGoToLogin = () => {
-    navigation.navigate('Login');
+    dispatch(exitGuest());
   };
 
   return (

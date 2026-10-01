@@ -14,12 +14,16 @@ type CartListItem = {
 }
 
 type CartScreenProps = {
-  CartList: CartListItem[]
-  onIncrement: (_id: string, size: string) => void
-  onDecrement: (_id: string, size: string) => void
+  CartList?: CartListItem[]
+  onIncrement?: (_id: string, size: string) => void
+  onDecrement?: (_id: string, size: string) => void
 }
 
-const CartScreen: React.FC<CartScreenProps> = ({ CartList, onIncrement, onDecrement }) => {
+const CartScreen: React.FC<CartScreenProps> = ({
+  CartList = [],
+  onIncrement = () => {},
+  onDecrement = () => {},
+}) => {
   return (
     <SafeAreaView className="flex-1 bg-white">
       <ScrollView

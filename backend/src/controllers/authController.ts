@@ -3,10 +3,13 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User, { IUser } from "../models/userModel";
 import { AuthenticatedRequest } from "../middlewares/authMiddleware";
+import { getJwtSecret } from "../config/jwt";
 
-const getJwtSecret = (): string => {
-  return process.env.JWT_SECRET || "oanh_native_jwt_super_secret_key_2026_secure";
-};
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const PASSWORD_MIN = 6;
+const PASSWORD_MAX = 72;
+const NAME_MAX = 50;
 
 const generateToken = (userId: string, email: string): string => {
   return jwt.sign({ id: userId, email }, getJwtSecret(), {
@@ -32,17 +35,30 @@ export const register = async (req: Request, res: Response): Promise<Response | 
     return res.status(400).json({ error: "Email is required." });
   }
 
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const normalizedEmail = email.trim().toLowerCase();
-  if (!emailRegex.test(normalizedEmail)) {
+  if (!EMAIL_REGEX.test(normalizedEmail)) {
     return res.status(400).json({ error: "Please provide a valid email address." });
   }
 
-  if (!password || typeof password !== "string" || password.length < 6) {
-    return res.status(400).json({ error: "Password must be at least 6 characters long." });
+  if (!password || typeof password !== "string" || password.length < PASSWORD_MIN) {
+    return res.status(400).json({ error: `Password must be at least ${PASSWORD_MIN} characters long.` });
+  }
+  if (Buffer.byteLength(password, "utf8") > PASSWORD_MAX) {
+    return res.status(400).json({ error: `Password must be at most ${PASSWORD_MAX} bytes long.` });
   }
 
-  const displayName = typeof name === "string" && name.trim() ? name.trim() : normalizedEmail.split("@")[0];
+  if (name !== undefined && typeof name !== "string") {
+    return res.status(400).json({ error: "Name must be a string." });
+  }
+  const trimmedName = typeof name === "string" ? name.trim() : "";
+  if (trimmedName && trimmedName.length < 2) {
+    return res.status(400).json({ error: "Name must be at least 2 characters long." });
+  }
+  if (trimmedName.length > NAME_MAX) {
+    return res.status(400).json({ error: `Name must be at most ${NAME_MAX} characters long.` });
+  }
+
+  const displayName = trimmedName || normalizedEmail.split("@")[0];
 
   try {
     const existingUser = await User.findOne({ email: normalizedEmail });
@@ -68,7 +84,11 @@ export const register = async (req: Request, res: Response): Promise<Response | 
       token,
       user: sanitizeUser(newUser),
     });
-  } catch (error) {
+  } catch (error: any) {
+ 
+    if (error?.code === 11000 && error?.keyPattern?.email) {
+      return res.status(409).json({ error: "An account with this email already exists." });
+    }
     console.error("Register error:", error);
     return res.status(500).json({ error: "Internal server error during registration." });
   }
@@ -77,7 +97,7 @@ export const register = async (req: Request, res: Response): Promise<Response | 
 export const login = async (req: Request, res: Response): Promise<Response | void> => {
   const { email, password } = req.body;
 
-  if (!email || !password) {
+  if (!email || !password || typeof email !== "string" || typeof password !== "string") {
     return res.status(400).json({ error: "Email and password are required." });
   }
 

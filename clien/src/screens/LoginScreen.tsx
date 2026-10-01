@@ -21,7 +21,6 @@ import { cssInterop } from 'nativewind';
 import {
   AlertCircle,
   ArrowRight,
-  CheckCircle2,
   Eye,
   EyeOff,
   Lock,
@@ -36,6 +35,8 @@ import {
   validateEmail,
   validatePassword,
 } from '../services/authService';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { clearAuthError, enterGuest, login } from '../store/authSlice';
 
 cssInterop(MotiView, { className: 'style' });
 cssInterop(SafeAreaView, { className: 'style' });
@@ -44,6 +45,8 @@ type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, '
 
 export const LoginScreen: React.FC = () => {
   const navigation = useNavigation<LoginScreenNavigationProp>();
+  const dispatch = useAppDispatch();
+  const authError = useAppSelector((state) => state.auth.error);
   const { width, height } = useWindowDimensions();
 
   const [email, setEmail] = useState('');
@@ -56,7 +59,6 @@ export const LoginScreen: React.FC = () => {
   const [emailError, setEmailError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [generalError, setGeneralError] = useState<string | null>(null);
-  const [generalSuccess, setGeneralSuccess] = useState<string | null>(null);
 
   const isSmallScreen = height < 720 || width < 380;
 
@@ -64,12 +66,14 @@ export const LoginScreen: React.FC = () => {
     setEmail(text);
     if (emailError) setEmailError(null);
     if (generalError) setGeneralError(null);
+    if (authError) dispatch(clearAuthError());
   };
 
   const handlePasswordChange = (text: string) => {
     setPassword(text);
     if (passwordError) setPasswordError(null);
     if (generalError) setGeneralError(null);
+    if (authError) dispatch(clearAuthError());
   };
 
   const handleFillDemo = () => {
@@ -82,7 +86,6 @@ export const LoginScreen: React.FC = () => {
 
   const handleLogin = async () => {
     setGeneralError(null);
-    setGeneralSuccess(null);
 
     const emailResult = validateEmail(email);
     const passwordResult = validatePassword(password);
@@ -101,22 +104,15 @@ export const LoginScreen: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const response = await authService.login({
-        email: email.trim(),
-        password,
-      });
-
-      if (response.success && response.user) {
-        setGeneralSuccess(`Chào mừng trở lại, ${response.user.name}! Nhớ ví quá trời `);
-        setTimeout(() => {
-          navigation.replace('MainTabs');
-        }, 500);
-      } else {
-        setGeneralError(response.error || 'Sai rồi bạn ơi, thử lại xem nào ');
-      }
-    } catch {
-      setGeneralError('Mạng lag quá, thử lại giúp mình cái nha ');
-    } finally {
+      // Thành công -> authSlice đổi status, RootNavigator tự chuyển sang MainTabs
+      await dispatch(
+        login({
+          email: email.trim(),
+          password,
+        })
+      ).unwrap();
+    } catch (error: any) {
+      setGeneralError(typeof error === 'string' ? error : 'Sai rồi bạn ơi, thử lại xem nào');
       setIsLoading(false);
     }
   };
@@ -151,46 +147,13 @@ export const LoginScreen: React.FC = () => {
     );
   };
 
-  const handleSignUp = async () => {
-    const emailResult = validateEmail(email);
-    const passwordResult = validatePassword(password);
-
-    if (!emailResult.isValid || !passwordResult.isValid) {
-      Alert.alert(
-        'Tạo tài khoản mới',
-        'Điền email hợp lệ và mật khẩu ít nhất 6 ký tự vô form phía trên trước đã bạn ơi ',
-        [{ text: 'Ừ để tui điền' }]
-      );
-      return;
-    }
-
-    setIsLoading(true);
-    setGeneralError(null);
-    setGeneralSuccess(null);
-
-    try {
-      const response = await authService.register({
-        email: email.trim(),
-        password,
-      });
-
-      if (response.success && response.user) {
-        setGeneralSuccess(`Tạo tài khoản xong xuôi! Chào mừng, ${response.user.name} `);
-        setTimeout(() => {
-          navigation.replace('MainTabs');
-        }, 500);
-      } else {
-        setGeneralError(response.error || 'Đăng ký chưa thành, thử lại phát nữa nha.');
-      }
-    } catch {
-      setGeneralError('Mạng lag quá, thử lại giúp mình cái nha ');
-    } finally {
-      setIsLoading(false);
-    }
+  const handleSignUp = () => {
+    dispatch(clearAuthError());
+    navigation.navigate('Register');
   };
 
   const handleContinueAsGuest = () => {
-    navigation.replace('MainTabs');
+    dispatch(enterGuest());
   };
 
   return (
@@ -259,19 +222,6 @@ export const LoginScreen: React.FC = () => {
               <AlertCircle size={18} color={COLORS.primaryRed} />
               <Text className="flex-1 font-poppins-medium text-xs text-[#DC3535]">
                 {generalError}
-              </Text>
-            </MotiView>
-          )}
-
-          {generalSuccess && (
-            <MotiView
-              from={{ opacity: 0, translateY: -8 }}
-              animate={{ opacity: 1, translateY: 0 }}
-              className="mb-4 flex-row items-center gap-2 rounded-2xl border border-green-200 bg-green-50 p-3.5"
-            >
-              <CheckCircle2 size={18} color="#16A34A" />
-              <Text className="flex-1 font-poppins-medium text-xs text-green-700">
-                {generalSuccess}
               </Text>
             </MotiView>
           )}

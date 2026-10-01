@@ -7,14 +7,14 @@ export const USER_STORAGE_KEY = '@oanh_auth_user';
 const getBaseUrl = (): string => {
   const envUrl = process.env.EXPO_PUBLIC_API_URL;
   if (envUrl) {
-    // If Android emulator and url has localhost, auto-map to 10.0.2.2
+
     if (Platform.OS === 'android' && envUrl.includes('localhost')) {
       return envUrl.replace('localhost', '10.0.2.2');
     }
     return envUrl;
   }
 
-  // Fallbacks based on platform
+
   if (Platform.OS === 'android') {
     return 'http://10.0.2.2:5000';
   }
@@ -29,14 +29,20 @@ export interface ApiResponse<T = any> {
   [key: string]: any;
 }
 
+type UnauthorizedHandler = () => void;
+
 class ApiClient {
+  private unauthorizedHandler: UnauthorizedHandler | null = null;
+
+
+  setUnauthorizedHandler(handler: UnauthorizedHandler | null) {
+    this.unauthorizedHandler = handler;
+  }
+
   private get baseUrl(): string {
     return getBaseUrl();
   }
 
-  /**
-   * Helper to retrieve the active JWT token from secure local storage
-   */
   async getToken(): Promise<string | null> {
     try {
       return await AsyncStorage.getItem(TOKEN_STORAGE_KEY);
@@ -45,9 +51,7 @@ class ApiClient {
     }
   }
 
-  /**
-   * Core request method
-   */
+ 
   async request<T = any>(
     endpoint: string,
     options: RequestInit = {}
@@ -66,7 +70,7 @@ class ApiClient {
     }
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000);
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
 
     try {
       const response = await fetch(url, {
@@ -86,6 +90,9 @@ class ApiClient {
       }
 
       if (!response.ok) {
+        if (response.status === 401 && token && !endpoint.startsWith('/api/auth/')) {
+          this.unauthorizedHandler?.();
+        }
         const errorMessage =
           responseData?.error ||
           responseData?.message ||
@@ -100,16 +107,30 @@ class ApiClient {
     } catch (err: any) {
       clearTimeout(timeoutId);
 
-      if (err.name === 'AbortError') {
-        const timeoutError = new Error('Connection timed out. Please check your network.');
+      const msg = String(err?.message || '').toLowerCase();
+
+
+      if (
+        err?.name === 'AbortError' ||
+        msg.includes('canceled') ||
+        msg.includes('cancelled') ||
+        msg.includes('aborted')
+      ) {
+        const timeoutError = new Error(
+          `Máy chủ không phản hồi (${this.baseUrl}). Kiểm tra backend đã chạy, cùng mạng Wi-Fi và EXPO_PUBLIC_API_URL đúng chưa.`
+        );
         (timeoutError as any).isNetworkError = true;
         throw timeoutError;
       }
 
-      // Detect network failure
-      if (err.message === 'Network request failed' || err.message?.includes('Failed to fetch')) {
+    
+      if (
+        msg.includes('network request failed') ||
+        msg.includes('failed to fetch') ||
+        msg.includes('fetch failed')
+      ) {
         const networkError = new Error(
-          'Cannot connect to backend server. Make sure the server is running on ' + this.baseUrl
+          `Không kết nối được tới backend (${this.baseUrl}). Hãy chắc chắn server đang chạy.`
         );
         (networkError as any).isNetworkError = true;
         throw networkError;
